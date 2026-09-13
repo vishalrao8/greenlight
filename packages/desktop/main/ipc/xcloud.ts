@@ -117,6 +117,9 @@ export default class IpcxCloud extends IpcBase {
                     .catch((error) => {
                         reject(error)
                     })
+            } else if (onlyEntitled) {
+                const entitled = this._entitledTitles.length > 0 ? this._entitledTitles : this._titleManager.getTitles(true)
+                resolve(entitled)
             } else {
                 if (onlyEntitled) {
                     const entitled = this._entitledTitles.length > 0 ? this._entitledTitles : this._titleManager.getTitles(true)
