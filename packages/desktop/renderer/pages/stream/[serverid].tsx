@@ -16,12 +16,22 @@ function Stream() {
 
     let streamStateInterval
     let keepaliveInterval
+    let gamepadDebugInterval
 
     const [xPlayer, setxPlayer] = React.useState(undefined)
     const [sessionId, setSessionId] = React.useState('')
     const [queueTime, setQueueTime] = React.useState(0)
 
     React.useEffect(() => {
+        const onGamepadConnect = (e: GamepadEvent) => {
+            console.log('debug999 [Stream Window Event] gamepadconnected:', { id: e.gamepad.id, index: e.gamepad.index, connected: e.gamepad.connected })
+        }
+        const onGamepadDisconnect = (e: GamepadEvent) => {
+            console.log('debug999 [Stream Window Event] gamepaddisconnected:', { id: e.gamepad.id, index: e.gamepad.index })
+        }
+        window.addEventListener('gamepadconnected', onGamepadConnect)
+        window.addEventListener('gamepaddisconnected', onGamepadDisconnect)
+
         // Detect stream type and title / server id
         let streamType = 'home'
         let serverId = router.query.serverid
@@ -125,6 +135,21 @@ function Stream() {
                                 console.error('Failed to send keepalive. Error details:\n'+JSON.stringify(error))
                             })
                         }, 30000) // Send every 30 seconds
+
+                        // Live gamepad input monitor for debugging during active stream
+                        let lastLoggedButtons = ''
+                        gamepadDebugInterval = setInterval(() => {
+                            const gps = Array.from(navigator.getGamepads()).filter(Boolean)
+                            for (const gp of gps) {
+                                const pressed = gp.buttons.map((b, i) => b.pressed ? i : null).filter((v) => v !== null)
+                                const movedAxes = gp.axes.map((a, i) => Math.abs(a) > 0.2 ? `axis${i}:${a.toFixed(2)}` : null).filter(Boolean)
+                                const stateStr = `gp#${gp.index} buttons:[${pressed.join(',')}] axes:[${movedAxes.join(',')}]`
+                                if ((pressed.length > 0 || movedAxes.length > 0) && stateStr !== lastLoggedButtons) {
+                                    lastLoggedButtons = stateStr
+                                    console.log('debug999 [Stream Live Input]:', stateStr)
+                                }
+                            }
+                        }, 50)
 
                     } else if(event.state === 'new'){
                         connStatus.innerText = t('streamWindow.startingConnection')
@@ -243,6 +268,13 @@ function Stream() {
             if(streamStateInterval){
                 clearInterval(streamStateInterval)
             }
+
+            if(gamepadDebugInterval){
+                clearInterval(gamepadDebugInterval)
+            }
+
+            window.removeEventListener('gamepadconnected', onGamepadConnect)
+            window.removeEventListener('gamepaddisconnected', onGamepadDisconnect)
         }
     })
 
