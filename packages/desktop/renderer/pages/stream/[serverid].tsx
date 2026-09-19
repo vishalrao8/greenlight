@@ -171,6 +171,21 @@ function Stream() {
                             clearInterval(streamStateInterval)
 
                             // Start xPlayer interface
+                            console.log('debug999 [Stream] Console ready. Initializing xCloudPlayer with config:', {
+                                input_touch: settings.input_touch || false,
+                                input_mousekeyboard: settings.input_mousekeyboard || false,
+                                input_legacykeyboard: (settings.input_newgamepad) ? false : true,
+                                input_newgamepad: settings.input_newgamepad,
+                                gamepads: Array.from(navigator.getGamepads()).map((gp, i) => gp ? {
+                                    slot: i,
+                                    id: gp.id,
+                                    index: gp.index,
+                                    connected: gp.connected,
+                                    buttons: gp.buttons.length,
+                                    axes: gp.axes.length
+                                } : { slot: i, nullOrDisconnected: true })
+                            })
+
                             setxPlayer(new xCloudPlayer('streamComponent', {
                                 ui_systemui: [],
                                 input_touch: settings.input_touch || false,

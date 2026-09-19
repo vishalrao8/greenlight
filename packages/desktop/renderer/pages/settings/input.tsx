@@ -203,7 +203,23 @@ function SettingsInput() {
                     <div>
                         {
                             (() => {
-                                const connectedGamepads = Array.from(navigator.getGamepads()).filter((item) => item?.connected)
+                                const rawGamepads = Array.from(navigator.getGamepads())
+                                const connectedGamepads = rawGamepads.filter((item) => item?.connected)
+
+                                console.log('debug999 [Settings/Input] raw navigator.getGamepads():', rawGamepads.map((item, idx) => item ? {
+                                    slot: idx,
+                                    id: item.id,
+                                    index: item.index,
+                                    connected: item.connected,
+                                    axes: item.axes.length,
+                                    buttons: item.buttons.length,
+                                } : { slot: idx, nullOrDisconnected: true }))
+
+                                console.log('debug999 [Settings/Input] filtered connectedGamepads:', connectedGamepads.map((item, idx) => ({
+                                    compactSlot: idx,
+                                    realIndex: item.index,
+                                    id: item.id,
+                                })))
 
                                 if (connectedGamepads.length === 0) {
                                     return <p>{t('settings.input.noControllerDetected')}</p>
