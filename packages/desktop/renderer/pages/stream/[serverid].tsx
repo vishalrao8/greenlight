@@ -44,6 +44,29 @@ function Stream() {
             document.getElementById('streamComponentHolder').innerHTML = '<div id="streamComponent" class="size_'+settings.video_size+'"></div>'
             xPlayer.bind()
 
+            // Attach debug999 interceptor directly to xPlayer._inputDriver in git-tracked code
+            try {
+                if (xPlayer._inputDriver && typeof xPlayer._inputDriver.requestStates === 'function') {
+                    const originalRequestStates = xPlayer._inputDriver.requestStates.bind(xPlayer._inputDriver)
+                    let lastDebugStatesLog = 0
+                    xPlayer._inputDriver.requestStates = function() {
+                        const states = originalRequestStates()
+                        const now = Date.now()
+                        if (now - lastDebugStatesLog > 2500) {
+                            lastDebugStatesLog = now
+                            const gps = Array.from(navigator.getGamepads()).map((gp, i) => gp ? { slot: i, id: gp.id, index: gp.index, connected: gp.connected } : { slot: i, disconnected: true })
+                            console.log('debug999 [GamepadDriver.requestStates] raw navigator.getGamepads():', gps, 'states generated:', states.map((s: any) => ({ GamepadIndex: s.GamepadIndex, A: s.A, B: s.B, X: s.X, Y: s.Y })))
+                        }
+                        if (states.some((s: any) => s.A || s.B || s.X || s.Y || s.LeftShoulder || s.RightShoulder || s.View || s.Menu || s.Nexus || Math.abs(s.LeftThumbXAxis) > 0.1 || Math.abs(s.LeftThumbYAxis) > 0.1)) {
+                            console.log('debug999 [GamepadDriver.requestStates] CONTROLLER INPUT DETECTED:', states.filter((s: any) => s.A || s.B || s.X || s.Y || s.LeftShoulder || s.RightShoulder || s.View || s.Menu || s.Nexus || Math.abs(s.LeftThumbXAxis) > 0.1 || Math.abs(s.LeftThumbYAxis) > 0.1))
+                        }
+                        return states
+                    }
+                }
+            } catch (err) {
+                console.error('debug999 error hooking inputDriver:', err)
+            }
+
             // Set bitrates & video codec profiles
             if((streamType === 'cloud') ? settings.xcloud_bitrate : settings.xhome_bitrate > 0){
                 xPlayer.setVideoBitrate((streamType === 'cloud') ? settings.xcloud_bitrate : settings.xhome_bitrate)
@@ -135,6 +158,41 @@ function Stream() {
                                 console.error('Failed to send keepalive. Error details:\n'+JSON.stringify(error))
                             })
                         }, 30000) // Send every 30 seconds
+
+                        // Attach debug999 interceptor to control and input channels in git-tracked code
+                        try {
+                            const controlChannel = xPlayer.getChannelProcessor('control')
+                            if (controlChannel && typeof controlChannel.sendGamepadAdded === 'function') {
+                                const origAdded = controlChannel.sendGamepadAdded.bind(controlChannel)
+                                controlChannel.sendGamepadAdded = function(slot: number) {
+                                    console.log('debug999 [ControlChannel.sendGamepadAdded] Notifying cloud of added gamepad slot:', slot)
+                                    return origAdded(slot)
+                                }
+                                const origRemoved = controlChannel.sendGamepadRemoved.bind(controlChannel)
+                                controlChannel.sendGamepadRemoved = function(slot: number) {
+                                    console.log('debug999 [ControlChannel.sendGamepadRemoved] Notifying cloud of removed gamepad slot:', slot)
+                                    return origRemoved(slot)
+                                }
+                            }
+
+                            const inputChannel = xPlayer.getChannelProcessor('input')
+                            if (inputChannel && typeof inputChannel.queueGamepadState === 'function') {
+                                const origQueueState = inputChannel.queueGamepadState.bind(inputChannel)
+                                let lastLoggedQueue = 0
+                                inputChannel.queueGamepadState = function(state: any) {
+                                    const now = Date.now()
+                                    if (state && (state.A || state.B || state.X || state.Y || state.LeftShoulder || state.RightShoulder || state.View || state.Menu || state.Nexus || Math.abs(state.LeftThumbXAxis) > 0.1 || Math.abs(state.LeftThumbYAxis) > 0.1)) {
+                                        console.log('debug999 [InputChannel.queueGamepadState] Queuing active state to cloud:', state)
+                                    } else if (now - lastLoggedQueue > 3000) {
+                                        lastLoggedQueue = now
+                                        console.log('debug999 [InputChannel.queueGamepadState] Heartbeat frame queued:', { GamepadIndex: state?.GamepadIndex })
+                                    }
+                                    return origQueueState(state)
+                                }
+                            }
+                        } catch (e) {
+                            console.error('debug999 error hooking channels:', e)
+                        }
 
                         // Live gamepad input monitor for debugging during active stream
                         let lastLoggedButtons = ''
