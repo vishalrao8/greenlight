@@ -10,7 +10,7 @@
     "url": "git+https://github.com/unknownskl/greenlight.git"
   },
   "scripts": {
-    "dev": "DEBUG=greenlight:* nextron",
+    "dev": "DEBUG=greenlight:* nextron dev --startup-delay 15000",
     "build": "nextron build",
     "lint": "eslint . --ext .ts && eslint renderer/ --ext .tsx",
     "lint:fix": "eslint . --ext .ts --fix && eslint renderer/ --ext .tsx --fix",
