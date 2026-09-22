@@ -60,6 +60,16 @@ function Stream() {
                         if (states.some((s: any) => s.A || s.B || s.X || s.Y || s.LeftShoulder || s.RightShoulder || s.View || s.Menu || s.Nexus || Math.abs(s.LeftThumbXAxis) > 0.1 || Math.abs(s.LeftThumbYAxis) > 0.1)) {
                             console.log('debug999 [GamepadDriver.requestStates] CONTROLLER INPUT DETECTED:', states.filter((s: any) => s.A || s.B || s.X || s.Y || s.LeftShoulder || s.RightShoulder || s.View || s.Menu || s.Nexus || Math.abs(s.LeftThumbXAxis) > 0.1 || Math.abs(s.LeftThumbYAxis) > 0.1))
                         }
+
+                        // Ensure connected controllers are mapped to logical slot 0, 1, 2...
+                        // so a controller sitting on hardware index 1 gets assigned to slot 0 (Player 1)
+                        states.forEach((s: any, idx: number) => {
+                            if (s.GamepadIndex !== idx) {
+                                console.log(`debug999 [GamepadDriver.requestStates] Remapping GamepadIndex from ${s.GamepadIndex} to logical slot ${idx}`)
+                                s.GamepadIndex = idx
+                            }
+                        })
+
                         return states
                     }
                 }
